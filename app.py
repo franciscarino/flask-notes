@@ -1,14 +1,13 @@
 """Flask app."""
 
-from flask import Flask, url_for, render_template, redirect, flash, jsonify
+from flask import Flask, session, render_template, redirect, flash, jsonify
 
 from flask_debugtoolbar import DebugToolbarExtension
-from forms import RegisterForm
-from models import db, connect_db
+from forms import RegisterForm, LoginForm
+from models import db, connect_db, User
 
 
 app = Flask(__name__)
-
 app.config['SECRET_KEY'] = "YOUR_SECRET"
 
 app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql:///flask_notes"
@@ -36,23 +35,61 @@ def root():
     return redirect("/register")
 
 
-@app.get("/register", methods=["GET", "POST"])
+@app.route("/register", methods=["GET", "POST"])
 def show_register_form():
     """Register/create a user"""
 
     form = RegisterForm()
 
-
-    if
+    if form.validate_on_submit():
+        username = form.username.data
+        password = form.password.data
+        email = form.email.data
+        first_name = form.first_name.data
+        last_name = form.last_name.data
+        
+        user = User.register(username,password,email,first_name,last_name)
+        
+        db.session.add(user)
+        db.session.commit()
+        
+        session["username"] = user.username  # keep logged in
+        return redirect("/user/<username>")
 
     else:
         return render_template("register.html", form=form)
 
 
-@app.get("/login")
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    """Produce login form or handle login."""
+
+    form = LoginForm()
+
+    if form.validate_on_submit():
+        username = form.username.data
+        password = form.password.data
+
+        # authenticate will return a user or False
+        user = User.authenticate(username, password)
+
+        if user:
+            session["username"] = user.username # keep logged in
+            return redirect(f"/users/{username}")
+
+        else:
+            form.username.errors = ["Bad name/password"]
+
+    return render_template("login.html", form=form)
 
 
-@app.post("/login")
+@app.get("/users/<username>")
+def show_user_page(username):
+    
+    if 'username' not in session:
+        flash("You must be logged in to view!")
+        return redirect("/")
 
-
-@app.get("/secret")
+    else:
+        user_data = User.query.get(username)
+        return render_template('user.html', user_data=user_data)
