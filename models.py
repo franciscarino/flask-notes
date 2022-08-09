@@ -7,14 +7,6 @@ bcrypt = Bcrypt()
 db = SQLAlchemy()
 
 
-class MyTable(db.Model):
-    """Playlist."""
-
-    __tablename__ = "mytables"
-
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-
-
 def connect_db(app):
     """Connect this database to provided Flask app.
     You should call this in your Flask app.
@@ -35,7 +27,7 @@ class User(db.Model):
     first_name = db.Column(db.String(30), nullable=False)
     last_name = db.Column(db.String(30), nullable=False)
 
-#significance of @classmethod and cls?
+    notes = db.relationship("Note", backref="user")
 
     @classmethod
     def register(cls, username, password, email, first_name, last_name):
@@ -60,3 +52,13 @@ class User(db.Model):
             return u
         else:
             return False
+
+class Note(db.Model):
+    """Notes model"""
+
+    __tablename__ = 'notes'
+
+    id = db.Column(db.Integer(), nullable=False, primary_key=True, unique=True, autoincrement=True)
+    title = db.Column(db.String(100), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    owner = db.Column(db.String(20), db.ForeignKey('users.username'), nullable=False)
