@@ -18,7 +18,7 @@ db.create_all()
 # Having the Debug Toolbar show redirects explicitly is often useful;
 # however, if you want to turn it off, you can uncomment this line:
 #
-# app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
+app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
 
 toolbar = DebugToolbarExtension(app)
 
@@ -50,6 +50,8 @@ def show_register_form():
         db.session.commit()
 
         session["username"] = user.username  # keep logged in
+        
+        flash(f'Registration successful!')
         return redirect(f"/users/{username}")
 
     else:
@@ -70,15 +72,16 @@ def login():
         username = form.username.data
         password = form.password.data
 
-        # authenticate will return a user or False
         user = User.authenticate(username, password)
 
         if user:
             session["username"] = user.username # keep logged in
+            flash(f'Login successful!')
             return redirect(f"/users/{username}")
 
         else:
             form.username.errors = ["Bad name/password"]
+
 
     return render_template("login.html", form=form)
 
@@ -95,13 +98,7 @@ def show_user_page(username):
 
     else:
         user_data = User.query.get(username)
-
-        #TODO:
-        #Show all of the notes a user has given.
-        #For each note, display with a link to a form to edit the note and a button to delete the note.
-        #Have a link that sends you to a form to add more notes and a button to delete the entire user account, including their notes.
-
-
+        
         return render_template('user.html', user_data=user_data, form=form)
 
 
@@ -112,13 +109,35 @@ def logout():
     form = CSRFProtectForm()
 
     if form.validate_on_submit():
-        # Remove "user_id" if present, but no errors if it wasn't
         session.pop("username", None)
 
+    flash(f'Logout successful!')
     return redirect("/")
 
 
 @app.post("/users/<username>/delete")
+def delete_user_and_notes(username):
+    """Deletes user and all notes"""
+    
+    if 'username' not in session or username != session['username']:
+        flash("You can't delete this account!")
+
+        return redirect("/")
+    
+    user = User.query.get_or_404(username)
+    notes = Note.query.filter_by(owner=username)
+    
+    notes.delete()
+    db.session.delete(user)
+    db.session.commit()
+    
+    session.pop("username", None)
+    
+    flash(f'User deleted!')
+    return redirect("/")
+
+
+
 
 ##############################################################################
 #Notes
@@ -143,14 +162,50 @@ def handle_add_note(username):
         db.session.add(new_note)
         db.session.commit()
 
+        flash(f'Note added!')
         return redirect(f"/users/{username}")
 
     else:
-        return render_template("register.html", form=form)
+        return render_template("add-note.html", form=form)
 
 
+@app.route("/notes/<note_id>/update", methods=["GET", "POST"])
+def handle_edit_note(note_id):
+    """Display note edit form and handle note edit form submission.
+    Redirect to user profile on successful form submission."""
+    
+    note = Note.query.get_or_404(note_id)
+    username = note.owner
+    
+    if 'username' not in session or username != session['username']:
+        flash("You must be logged in to view!")
 
-# @app.route("/notes/<note-id>/update", methods=["GET", "POST"])
+        return redirect("/")    
+    
+    # obj=note?
+    form = NoteForm(obj=note)
+    
+    if form.validate_on_submit():
+        note.title = form.title.data
+        note.content = form.content.data
 
+        db.session.commit()
+        
+        flash(f'Note updated!')
+        return redirect(f"/users/{username}")
 
-# @app.post("/notes/<note-id>/delete")
+    else:
+        return render_template('edit-note.html', form=form, note=note)
+
+@app.post("/notes/<note_id>/delete")
+def delete_note(note_id):
+    """Delete note and redirect to user profile."""
+    
+    note = Note.query.get_or_404(note_id)
+    username = note.owner
+    
+    db.session.delete(note)
+    db.session.commit()
+    
+    flash(f'Note deleted!')
+    return redirect(f"/users/{username}")

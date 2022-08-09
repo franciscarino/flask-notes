@@ -1,18 +1,38 @@
 {% extends "base.html" %} {% block title %} Secret {% endblock %} {% block
 content %}
 
+<div>
+<h1>{{user_data.first_name}} {{user_data.last_name}}</h1>
+<p>{{user_data.email}}</p>
+</div>
+
+<h2>Notes</h2>
+<ul>
+  {% for note in user_data.notes %}
+  <li>
+    <a href="/notes/{{note.id}}/update"><i class="fa-solid fa-pencil"></i></a>
+    <form id="delete-note" action="/notes/{{note.id}}/delete" method="POST">
+       <button><i class="fa-solid fa-trash-can"></i></button>
+    </form>
+    {{note.title}} - {{note.content}}
+  </li>
+  {% endfor %}
+</ul>
+
+<a href="/users/{{user_data.username}}/notes/add" class="btn btn-primary">Add Note</a>
+
 <form id="logout" action="/logout" method="POST">
   {{ form.hidden_tag() }}
   <!--add type=hidden form fields -->
-
   <button type="submit">Logout</button>
 </form>
 
-<ul>
-  <li>{{user_data.username}}</li>
-  <li>{{user_data.email}}</li>
-  <li>{{user_data.first_name}}</li>
-  <li>{{user_data.last_name}}</li>
-</ul>
+<form id="delete-user" action="/users/{{user_data.username}}/delete" method="POST">
+  {{ form.hidden_tag() }}
+  <!--add type=hidden form fields -->
+  <button type="submit">DELETE</button>
+</form>
+
+
 
 {% endblock %}
