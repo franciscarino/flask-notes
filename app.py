@@ -201,6 +201,8 @@ def handle_edit_note(note_id):
 def delete_note(note_id):
     """Delete note and redirect to user profile."""
     
+    #Make sure to protect this route!
+    
     note = Note.query.get_or_404(note_id)
     username = note.owner
     
